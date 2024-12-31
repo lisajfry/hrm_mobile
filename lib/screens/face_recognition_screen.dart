@@ -233,10 +233,15 @@ class _FaceRecognitionScreenState extends State<FaceRecognitionScreen> {
     final absensiService = AbsensiService();
     final absensi = await absensiService.absenMasuk(absensiData);
 
-    Navigator.of(context).pop(); // Tutup dialog loading
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Absensi berhasil dicatat: ${absensi.tanggal}')),
-    );
+   Navigator.of(context).pop(); // Tutup dialog loading
+ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(
+    content: Text('Absensi berhasil dicatat: ${absensi.tanggal}'),
+    backgroundColor: Colors.green,
+    behavior: SnackBarBehavior.floating,
+    duration: Duration(seconds: 3),
+  ),
+);
 
     Navigator.pop(context, true); // Mengirim flag bahwa data diperbarui
 
@@ -347,9 +352,15 @@ class _FaceRecognitionScreenState extends State<FaceRecognitionScreen> {
     final absensi = await absensiService.absenKeluar(absensiData);
 
     Navigator.of(context).pop(); // Tutup dialog loading
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Absensi keluar berhasil dicatat: ${absensi.tanggal}')),
-    );
+ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(
+    content: Text('Absensi keluar berhasil dicatat: ${absensi.tanggal}'),
+    backgroundColor: Colors.green,
+    behavior: SnackBarBehavior.floating,
+    duration: Duration(seconds: 3),
+  ),
+);
+
 
     Navigator.pop(context, true); // Mengirim flag bahwa data diperbarui
   } catch (e) {

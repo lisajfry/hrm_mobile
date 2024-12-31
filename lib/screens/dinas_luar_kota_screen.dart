@@ -12,38 +12,124 @@ class DinasLuarKotaScreen extends StatefulWidget {
 }
 
 class _DinasLuarKotaScreenState extends State<DinasLuarKotaScreen> {
+  final DinasLuarKotaService _dinasluarkotaService = DinasLuarKotaService();
   late Future<List<DinasLuarKota>> futureDinasLuarKota;
+  bool _isLoading = true;
+  int _selectedMonth = DateTime.now().month;
+  int _selectedYear = DateTime.now().year;
+
+  final TextEditingController _monthController = TextEditingController();
+  final TextEditingController _yearController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _refreshData(); 
-    futureDinasLuarKota = _fetchDinasLuarKota();
+    _monthController.text = _selectedMonth.toString();
+    _yearController.text = _selectedYear.toString();
+    _refreshData();
+  }
+
+  @override
+  void dispose() {
+    _monthController.dispose();
+    _yearController.dispose();
+    super.dispose();
   }
 
   Future<List<DinasLuarKota>> _fetchDinasLuarKota() async {
     try {
-      return await DinasLuarKotaService().getDinasLuarKota();
-    } catch (e, stacktrace) {
-      print('Error saat memuat data dinas luar kota: $e');
-      print('Stacktrace: $stacktrace');
+      return await _dinasluarkotaService.getDinasLuarKota(
+        bulan: _selectedMonth,
+        tahun: _selectedYear,
+      );
+    } catch (e) {
       throw Exception('Gagal memuat data dinas luar kota: $e');
     }
   }
 
-  Future<void> _deleteDinasLuarKota(int id) async {
-    try {
-      await DinasLuarKotaService().deleteDinasLuarKota(id);
-      _refreshData();
-    } catch (e, stacktrace) {
-      print('Error saat menghapus data dinas luar kota: $e');
-      print('Stacktrace: $stacktrace');
+  
+
+   Future<void> _deleteDinasLuarKota(int Id) async {
+    bool? confirmDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Hapus'),
+          content: const Text('Apakah Anda yakin ingin menghapus jadwal dinas luar kota ini?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Batal'),
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+            ),
+            TextButton(
+              child: const Text('Hapus'),
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmDelete == true) {
+      try {
+        await _dinasluarkotaService.deleteDinasLuarKota(Id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Dinas luar kota berhasil dihapus!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _refreshData();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menghapus izin: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
+
   void _refreshData() {
     setState(() {
-      futureDinasLuarKota = _fetchDinasLuarKota(); 
+      futureDinasLuarKota = _fetchDinasLuarKota();
+    });
+  }
+
+  void _changeMonth(bool isIncrement) {
+    setState(() {
+      if (isIncrement) {
+        if (_selectedMonth < 12) {
+          _selectedMonth++;
+        } else {
+          _selectedMonth = 1;
+          _selectedYear++;
+        }
+      } else {
+        if (_selectedMonth > 1) {
+          _selectedMonth--;
+        } else {
+          _selectedMonth = 12;
+          _selectedYear--;
+        }
+      }
+      _monthController.text = _selectedMonth.toString();
+      _yearController.text = _selectedYear.toString();
+      _refreshData();
+    });
+  }
+
+  void _changeYear(bool isIncrement) {
+    setState(() {
+      _selectedYear += isIncrement ? 1 : -1;
+      _yearController.text = _selectedYear.toString();
+      _refreshData();
     });
   }
 
@@ -51,143 +137,202 @@ class _DinasLuarKotaScreenState extends State<DinasLuarKotaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Daftar Dinas Luar Kota'),
+        title: const Text('Daftar Dinas Luar Kota'),
         backgroundColor: Colors.blue[800],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async => _refreshData(),
-        child: FutureBuilder<List<DinasLuarKota>>(
-          future: futureDinasLuarKota,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              print('Error FutureBuilder: ${snapshot.error}');
-              return Center(child: Text('Error: ${snapshot.error}'));
-            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return Center(child: Text('Tidak ada data dinas luar kota.'));
-            } else {
-              return ListView.builder(
-                itemCount: snapshot.data!.length,
-                itemBuilder: (BuildContext context, int index) {
-                  final dinas = snapshot.data![index];
-                  final DateFormat dateFormat = DateFormat('yyyy-MM-dd');
-                  final String formattedTglBerangkat = dateFormat.format(dinas.tglBerangkat);
-                  final String formattedTglKembali = dateFormat.format(dinas.tglKembali);
-
-                  final NumberFormat currencyFormat = NumberFormat('#,##0', 'id_ID');
-                  final String formattedTotalBiaya = currencyFormat.format(dinas.totalBiaya);
-
-                  Color statusColor;
-                  switch (dinas.status.toLowerCase()) {
-                    case 'disetujui':
-                      statusColor = Colors.green;
-                      break;
-                    case 'ditolak':
-                      statusColor = Colors.red;
-                      break;
-                    case 'pending':
-                    default:
-                      statusColor = Colors.yellow;
-                      break;
-                  }
-
-                  return Card(
-                    elevation: 4,
-                    margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '$formattedTglBerangkat - $formattedTglKembali',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  IconButton(
-                                    icon: Icon(Icons.edit, color: Colors.blue),
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => DinasLuarKotaForm(dinas: dinas)),
-                                      ).then((_) {
-                                        setState(() {
-                                          futureDinasLuarKota = _fetchDinasLuarKota();
-                                        });
-                                      });
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () async {
-                                      await _deleteDinasLuarKota(dinas.id);
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 5),
-                          Text(
-                            dinas.kotaTujuan,
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          SizedBox(height: 5),
-                          Text(
-                            'Keperluan: ${dinas.keperluan}',
-                            style: TextStyle(fontSize: 14),
-                          ),
-                          SizedBox(height: 5),
-                          Row(
-  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  crossAxisAlignment: CrossAxisAlignment.center,
-  children: [
-    Expanded(
-      child: Text(
-        'Total Biaya: Rp $formattedTotalBiaya',
-        style: TextStyle(fontSize: 14),
-      ),
-    ),
-    Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: statusColor,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        dinas.status,
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    ),
-  ],
-),
-                      ],
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                // Filter Bulan
+                Expanded(
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        color: Colors.blue,
+                        onPressed: () => _changeMonth(false),
                       ),
-                    ),
-                  );
-                },
-              );
-            }
-          },
+                      Expanded(
+                        child: TextField(
+                          controller: _monthController,
+                          enabled: false,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: 'Bulan',
+                            labelStyle: const TextStyle(color: Colors.blue),
+                            filled: true,
+                            fillColor: Colors.blue[50],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(color: Colors.blue),
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        color: Colors.blue,
+                        onPressed: () => _changeMonth(true),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Filter Tahun
+                Expanded(
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        color: Colors.blue,
+                        onPressed: () => _changeYear(false),
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _yearController,
+                          enabled: false,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: 'Tahun',
+                            labelStyle: const TextStyle(color: Colors.blue),
+                            filled: true,
+                            fillColor: Colors.blue[50],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(color: Colors.blue),
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        color: Colors.blue,
+                        onPressed: () => _changeYear(true),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async => _refreshData(),
+              child: FutureBuilder<List<DinasLuarKota>>(
+                future: futureDinasLuarKota,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('Tidak ada data dinas luar kota.'));
+                  } else {
+                    return ListView.separated(
+                      itemCount: snapshot.data!.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final dinas = snapshot.data![index];
+                        final DateFormat dateFormat = DateFormat('yyyy-MM-dd');
+                        final NumberFormat currencyFormat = NumberFormat('#,##0', 'id_ID');
+
+                       return Card(
+  elevation: 2, // Kurangi elevation untuk tampilan lebih minimalis
+  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Kurangi margin
+  child: Padding(
+    padding: const EdgeInsets.all(8), // Kurangi padding
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '${dateFormat.format(dinas.tglBerangkat)} - ${dateFormat.format(dinas.tglKembali)}',
+              style: const TextStyle(fontSize: 12), // Kurangi font size
+            ),
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blue, size: 18), // Kurangi ukuran ikon
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => DinasLuarKotaForm(dinas: dinas)),
+                    ).then((_) {
+                      _refreshData();
+                    });
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 18), // Kurangi ukuran ikon
+                  onPressed: () async {
+                    await _deleteDinasLuarKota(dinas.id);
+                  },
+                ),
+              ],
+            ),
+          ],
         ),
+        const SizedBox(height: 4), // Kurangi jarak antar elemen
+        Text(
+          dinas.kotaTujuan,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold), // Kurangi font size
+        ),
+        const SizedBox(height: 4), // Kurangi jarak antar elemen
+        Text(
+          'Keperluan: ${dinas.keperluan}',
+          style: const TextStyle(fontSize: 12), // Kurangi font size
+        ),
+        const SizedBox(height: 4), // Kurangi jarak antar elemen
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Total Biaya: Rp ${currencyFormat.format(dinas.totalBiaya)}',
+              style: const TextStyle(fontSize: 12), // Kurangi font size
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), // Kurangi padding badge
+              decoration: BoxDecoration(
+                color: _getStatusColor(dinas.status),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                dinas.status,
+                style: const TextStyle(
+                  fontSize: 12, // Kurangi font size
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  ),
+);
+                     },
+                      separatorBuilder: (BuildContext context, int index) => const Divider(),
+                    );
+                  }
+                },
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -195,14 +340,24 @@ class _DinasLuarKotaScreenState extends State<DinasLuarKotaScreen> {
             context,
             MaterialPageRoute(builder: (context) => DinasLuarKotaForm()),
           ).then((_) {
-            setState(() {
-              futureDinasLuarKota = _fetchDinasLuarKota();
-            });
+            _refreshData();
           });
         },
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
         tooltip: 'Tambah Dinas Luar Kota',
       ),
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'disetujui':
+        return Colors.green;
+      case 'ditolak':
+        return Colors.red;
+      case 'pending':
+      default:
+        return Colors.yellow;
+    }
   }
 }

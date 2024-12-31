@@ -44,19 +44,25 @@ class ApiService {
     return response;
   }
 
+static Future<http.StreamedResponse> postMultipartRequest(
+      String endpoint, File file, String token) async {
+    var url = Uri.parse(_baseUrl + endpoint);
 
-  // Multipart POST Request for uploading files
-static Future<http.StreamedResponse> postMultipartRequest(String endpoint, File file, String token) async {
-  var url = Uri.parse(_baseUrl + endpoint);
+    // Membuat multipart request
+    var request = http.MultipartRequest('POST', url)
+      ..headers['Authorization'] = 'Bearer $token'; // Tambahkan header otorisasi
 
-  // Create the multipart request
-  var request = http.MultipartRequest('POST', url)
-    ..headers['Authorization'] = 'Bearer $token'; // Authorization header
+    // Melampirkan file ke request (field 'avatar' disesuaikan dengan API Anda)
+    request.files.add(await http.MultipartFile.fromPath('avatar', file.path));
 
-  // Attach the file to the request (assuming 'avatar' is the field name in your API)
-  request.files.add(await http.MultipartFile.fromPath('avatar', file.path));
+    
 
-  // Send the request and return the response
-  return await request.send();
-}
-}
+    // Mengirim request dan mengembalikan response
+    return await request.send();
+
+
+      
+  }
+  
+  
+  }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../api/lembur_service.dart';
 import '../model/lembur.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LemburForm extends StatefulWidget {
   @override
@@ -14,7 +15,7 @@ class _LemburFormState extends State<LemburForm> {
   final _jamSelesaiController = TextEditingController();
   final _alasanController = TextEditingController();
 
-  int idKaryawan = 1;
+  int? idKaryawan;
   String status = 'pending';
 
   @override
@@ -26,11 +27,36 @@ class _LemburFormState extends State<LemburForm> {
     super.dispose();
   }
 
+ @override
+void initState() {
+  super.initState();
+  _fetchIdKaryawan(); // Ambil ID karyawan
+  // Inisialisasi controller lainnya
+}
+
+Future<void> _fetchIdKaryawan() async {
+  final prefs = await SharedPreferences.getInstance();
+  setState(() {
+    idKaryawan = prefs.getInt('id_karyawan') ?? 0; // Default ke 0 jika tidak ditemukan
+  });
+}
+
+
   Future<void> _submitForm() async {
+    if (idKaryawan == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ID Karyawan tidak ditemukan. Silakan login ulang.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (_formKey.currentState!.validate()) {
       try {
         final lembur = Lembur(
-          idKaryawan: idKaryawan,
+          idKaryawan: idKaryawan!,
           tanggalLembur: _tglLemburController.text,
           jamMulai: _jamMulaiController.text,
           jamSelesai: _jamSelesaiController.text,
@@ -59,6 +85,33 @@ class _LemburFormState extends State<LemburForm> {
     return end.difference(start).inMinutes / 60.0;
   }
 
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        _tglLemburController.text = picked.toIso8601String().split('T')[0];
+      });
+    }
+  }
+
+  Future<void> _selectTime(BuildContext context, TextEditingController controller) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null) {
+      final String formattedTime = picked.format(context);
+      setState(() {
+        controller.text = formattedTime;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -69,23 +122,38 @@ class _LemburFormState extends State<LemburForm> {
           key: _formKey,
           child: ListView(
             children: [
-              _buildTextField(
-                controller: _tglLemburController,
-                label: 'Tanggal Lembur',
-                hint: 'YYYY-MM-DD',
-                validator: _validateDate,
+              GestureDetector(
+                onTap: () => _selectDate(context),
+                child: AbsorbPointer(
+                  child: _buildTextField(
+                    controller: _tglLemburController,
+                    label: 'Tanggal Lembur',
+                    hint: 'Pilih tanggal',
+                    validator: _validateDate,
+                  ),
+                ),
               ),
-              _buildTextField(
-                controller: _jamMulaiController,
-                label: 'Jam Mulai',
-                hint: 'HH:mm:ss',
-                validator: _validateTime,
+              GestureDetector(
+                onTap: () => _selectTime(context, _jamMulaiController),
+                child: AbsorbPointer(
+                  child: _buildTextField(
+                    controller: _jamMulaiController,
+                    label: 'Jam Mulai',
+                    hint: 'Pilih jam mulai',
+                    validator: _validateTime,
+                  ),
+                ),
               ),
-              _buildTextField(
-                controller: _jamSelesaiController,
-                label: 'Jam Selesai',
-                hint: 'HH:mm:ss',
-                validator: _validateTime,
+              GestureDetector(
+                onTap: () => _selectTime(context, _jamSelesaiController),
+                child: AbsorbPointer(
+                  child: _buildTextField(
+                    controller: _jamSelesaiController,
+                    label: 'Jam Selesai',
+                    hint: 'Pilih jam selesai',
+                    validator: _validateTime,
+                  ),
+                ),
               ),
               _buildTextField(
                 controller: _alasanController,
@@ -139,11 +207,6 @@ class _LemburFormState extends State<LemburForm> {
 
   String? _validateTime(String? value) {
     if (value == null || value.isEmpty) return 'Waktu tidak boleh kosong';
-    try {
-      DateTime.parse('2024-12-28 $value');
-    } catch (_) {
-      return 'Format waktu tidak valid';
-    }
     return null;
   }
 }

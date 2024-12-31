@@ -58,173 +58,184 @@ class _IzinFormState extends State<IzinForm> {
   }
 
   Future<void> submitForm() async {
-  if (_formKey.currentState!.validate()) {
-    final izin = Izin(
-      id: widget.izin?.id ?? 0,
-      idKaryawan: idKaryawan,
-      tgl_mulai: _tglMulaiController.text,
-      tgl_selesai: _tglSelesaiController.text,
-      keterangan: _keteranganController.text,
-      alasan: alasan!,
-      durasi: (_tglSelesaiController.text.isNotEmpty && _tglMulaiController.text.isNotEmpty)
-          ? (DateTime.parse(_tglSelesaiController.text).difference(DateTime.parse(_tglMulaiController.text)).inDays + 1)
-          : 0,
-      status: 'Diajukan',
-    );
+    if (_formKey.currentState!.validate()) {
+      final izin = Izin(
+        id: widget.izin?.id ?? 0,
+        idKaryawan: idKaryawan,
+        tgl_mulai: _tglMulaiController.text,
+        tgl_selesai: _tglSelesaiController.text,
+        keterangan: _keteranganController.text,
+        alasan: alasan!,
+        durasi: (_tglSelesaiController.text.isNotEmpty && _tglMulaiController.text.isNotEmpty)
+            ? (DateTime.parse(_tglSelesaiController.text).difference(DateTime.parse(_tglMulaiController.text)).inDays + 1)
+            : 0,
+        status: 'Diajukan',
+      );
 
-    try {
-      if (widget.izin == null) {
-  // Jika widget.izin == null, berarti ini pengajuan izin baru
-  await IzinService().addIzin(izin);
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        'Izin berhasil ditambahkan!',
-        style: TextStyle(color: Colors.white), // Warna teks putih
-      ),
-      backgroundColor: Colors.green, // Warna latar belakang hijau
-      duration: Duration(seconds: 2),
-    ),
-  );
-} else {
-  // Jika widget.izin != null, berarti ini adalah edit izin yang sudah ada
-  await IzinService().updateIzin(izin);
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        'Izin berhasil diperbarui!',
-        style: TextStyle(color: Colors.white), // Warna teks putih
-      ),
-      backgroundColor: Colors.green, // Warna latar belakang hijau
-      duration: Duration(seconds: 2),
-    ),
-  
+      try {
+        if (widget.izin == null) {
+          await IzinService().addIzin(izin);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Izin berhasil ditambahkan!', style: TextStyle(color: Colors.white)),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          await IzinService().updateIzin(izin);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Izin berhasil diperbarui!', style: TextStyle(color: Colors.white)),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+
+        Navigator.pop(context);
+      } catch (e) {
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red),
+                  SizedBox(width: 10),
+                  Text('Error', style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Text(
+                e.toString().contains('Pengajuan izin pada tanggal ini sudah ada')
+                    ? 'Pengajuan izin pada tanggal ini sudah ada.'
+                    : 'Terjadi kesalahan saat memproses pengajuan izin.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('OK', style: TextStyle(color: Colors.blue)),
+                ),
+              ],
+            );
+          },
         );
       }
-
-      // Menutup form setelah berhasil menambahkan atau mengedit izin
-      Navigator.pop(context);
-    } catch (e) {
-      // Tampilkan alert jika terjadi error
-      showDialog(
-  context: context,
-  builder: (context) {
-    return AlertDialog(
-      backgroundColor: Colors.white, // Latar belakang putih yang bersih
-      title: Row(
-        children: [
-          Icon(Icons.error_outline, color: Colors.red), // Ikon error dengan warna merah yang lebih lembut
-          SizedBox(width: 10),
-          Text('Error', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)), // Judul yang lebih tegas dengan warna hitam
-        ],
-      ),
-      content: Text(
-        e.toString().contains('Pengajuan izin pada tanggal ini sudah ada')
-            ? 'Pengajuan izin pada tanggal ini sudah ada. Anda hanya dapat mengajukan izin satu kali untuk rentang tanggal yang sama.'
-            : 'Terjadi kesalahan saat memproses pengajuan izin.',
-        style: TextStyle(color: Colors.black87), // Teks isi dengan warna abu-abu gelap
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(
-            'OK',
-            style: TextStyle(color: Colors.blue), // Teks tombol dengan warna biru untuk memberi kontras
-          ),
-        ),
-      ],
-    );
-  },
-);
-
- }
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.izin == null ? 'Tambah Izin' : 'Edit Izin'),
+        backgroundColor: Theme.of(context).primaryColor,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              GestureDetector(
-                onTap: () => _selectDate(context, true),
-                child: AbsorbPointer(
-                  child: TextFormField(
-                    controller: _tglMulaiController,
-                    decoration: InputDecoration(labelText: 'Tanggal Mulai'),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Tanggal mulai tidak boleh kosong';
-                      }
-                      return null;
-                    },
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Tanggal Mulai', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                GestureDetector(
+                  onTap: () => _selectDate(context, true),
+                  child: AbsorbPointer(
+                    child: TextFormField(
+                      controller: _tglMulaiController,
+                      decoration: InputDecoration(
+                        hintText: 'Pilih tanggal mulai',
+                        prefixIcon: Icon(Icons.calendar_today),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Tanggal mulai tidak boleh kosong';
+                        }
+                        return null;
+                      },
+                    ),
                   ),
                 ),
-              ),
-              GestureDetector(
-                onTap: () => _selectDate(context, false),
-                child: AbsorbPointer(
-                  child: TextFormField(
-                    controller: _tglSelesaiController,
-                    decoration: InputDecoration(labelText: 'Tanggal Selesai'),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Tanggal selesai tidak boleh kosong';
-                      }
-                      return null;
-                    },
+                SizedBox(height: 16),
+
+                Text('Tanggal Selesai', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                GestureDetector(
+                  onTap: () => _selectDate(context, false),
+                  child: AbsorbPointer(
+                    child: TextFormField(
+                      controller: _tglSelesaiController,
+                      decoration: InputDecoration(
+                        hintText: 'Pilih tanggal selesai',
+                        prefixIcon: Icon(Icons.calendar_today),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Tanggal selesai tidak boleh kosong';
+                        }
+                        return null;
+                      },
+                    ),
                   ),
                 ),
-              ),
-              
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: 'Alasan'),
-                value: alasan,
-                items: ['izin', 'cuti'].map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    alasan = newValue;
-                  });
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Alasan tidak boleh kosong';
-                  }
-                  return null;
-                },
-              ),
+                SizedBox(height: 16),
 
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    labelText: 'Alasan',
+                    border: OutlineInputBorder(),
+                  ),
+                  value: alasan,
+                  items: ['izin', 'cuti'].map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      alasan = newValue;
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null) {
+                      return 'Alasan tidak boleh kosong';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 16),
 
-              TextFormField(
-                controller: _keteranganController,
-                decoration: InputDecoration(labelText: 'Keterangan'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Keterangan tidak boleh kosong';
-                  }
-                  return null;
-                },
-              ),
+                TextFormField(
+                  controller: _keteranganController,
+                  decoration: InputDecoration(
+                    labelText: 'Keterangan',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Keterangan tidak boleh kosong';
+                    }
+                    return null;
+                  },
+                ),
 
-
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: submitForm,
-                child: Text('Simpan'),
-              ),
-            ],
+                SizedBox(height: 32),
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: submitForm,
+                    icon: Icon(Icons.save),
+                    label: Text('Simpan'),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

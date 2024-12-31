@@ -58,47 +58,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _uploadAvatar() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('access_token');
+ Future<void> _uploadAvatar() async {
+  // Mendapatkan token dari SharedPreferences
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  final String? token = prefs.getString('access_token');
 
-    if (token == null) {
-      _showMessage('No token found', isError: true);
-      return;
-    }
-
-    if (_avatar == null) {
-      _showMessage('No image selected', isError: true);
-      return;
-    }
-
-    try {
-      final response = await ApiService.postMultipartRequest(
-        'profile/upload-avatar',
-        _avatar!,
-        token,
-      );
-
-      final responseBody = await http.Response.fromStream(response);
-
-      if (response.statusCode == 200) {
-        final responseData = json.decode(responseBody.body);
-        if (responseData['avatar_url'] != null && responseData['avatar_url'] is String) {
-          final avatarUrl = responseData['avatar_url'];
-          prefs.setString('avatar_path', avatarUrl);
-
-          _showMessage('Avatar uploaded successfully');
-          _fetchKaryawanData();
-        } else {
-          _showMessage('Invalid avatar URL returned by server', isError: true);
-        }
-      } else {
-        _showMessage('Failed to upload avatar: ${responseBody.body}', isError: true);
-      }
-    } catch (e) {
-      _showMessage('Error uploading avatar: $e', isError: true);
-    }
+  // Validasi apakah token tersedia
+  if (token == null) {
+    _showMessage('No token found', isError: true);
+    return;
   }
+
+  // Validasi apakah file avatar tersedia
+  if (_avatar == null) {
+    _showMessage('No image selected', isError: true);
+    return;
+  }
+
+  try {
+    // Mengirim request upload avatar
+    final response = await ApiService.postMultipartRequest(
+      'profile/avatar',
+      _avatar!, // File avatar yang dipilih
+      token,
+    );
+
+    // Mengonversi stream response ke bentuk respons biasa
+    final responseBody = await http.Response.fromStream(response);
+
+    
+
+    // Memeriksa status kode respons
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseData = json.decode(responseBody.body);
+
+      // Validasi apakah server mengembalikan URL avatar yang valid
+      if (responseData['avatar_url'] != null && responseData['avatar_url'] is String) {
+        final String avatarUrl = responseData['avatar_url'];
+
+        // Menyimpan URL avatar di SharedPreferences
+        await prefs.setString('avatar_path', avatarUrl);
+
+        // Menampilkan pesan sukses
+        _showMessage('Avatar uploaded successfully');
+        
+        // Memuat ulang data karyawan terbaru
+        _fetchKaryawanData();
+      } else {
+        _showMessage('Invalid avatar URL returned by server', isError: true);
+      }
+    } else {
+      // Menampilkan pesan kesalahan dari server
+      _showMessage('Failed to upload avatar: ${responseBody.body}', isError: true);
+    }
+  } catch (e) {
+    // Menangani error umum
+    _showMessage('Error uploading avatar: $e', isError: true);
+  }
+}
 
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -206,10 +223,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: _showUpdateDialog,
           ),
           IconButton(
-            icon: const Icon(Icons.upload),
-            onPressed: _pickImage,
-          ),
-          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
           ),
@@ -225,18 +238,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Center(
-                          child: CircleAvatar(
-                            radius: 60,
-                            backgroundColor: Colors.grey.shade300,
-                            backgroundImage: _avatar != null
-                                ? FileImage(_avatar!)
-                                : karyawanData?['avatar'] != null && karyawanData!['avatar'].isNotEmpty
-                                    ? NetworkImage('${ApiService.baseUrl}storage/${karyawanData!['avatar']}')
-                                    : const AssetImage('assets/images/profile.png') as ImageProvider,
-                          ),
-                        ),
-                        const SizedBox(height: 20), 
+                      Center(
+  child: Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Stack(
+        clipBehavior: Clip.none, // Agar ikon kamera tidak terpotong
+        alignment: Alignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4), // Bayangan di bawah
+                ),
+              ],
+            ),
+            child: CircleAvatar(
+              radius: 60,
+              backgroundColor: Colors.grey.shade300,
+              backgroundImage: _avatar != null
+                  ? FileImage(_avatar!)
+                  : (karyawanData?['avatar'] != null && karyawanData!['avatar'].isNotEmpty
+                      ? NetworkImage('${ApiService.baseUrl}storage/${karyawanData!['avatar']}')
+                      : const AssetImage('assets/images/profile.png')) as ImageProvider,
+            ),
+          ),
+          Positioned(
+            bottom: -15, // Memberi lebih banyak ruang di bawah
+            right: 0,
+            child: GestureDetector(
+              onTap: () async {
+                await _pickImage();
+                if (_avatar != null) {
+                  await _uploadAvatar();
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.blue,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.camera_alt,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 20),
+      const Text(
+        "Ketuk ikon kamera untuk mengubah avatar",
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.grey,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    ],
+  ),
+),
+
+
                         _buildContactInfo(), 
                       ],
                     ),
@@ -369,84 +446,136 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _updateProfile(Map<String, String> updatedData) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('access_token');
-    if (token == null) {
-      _showMessage('Token is missing', isError: true);
-      setState(() {
-        isLoading = false;
-      });
-      return;
-    }
-
-    try {
-      final response = await ApiService.putRequest('profile/update', updatedData, token);
-
-      if (response.statusCode == 200) {
-        _showMessage('Profile updated successfully');
-        _fetchKaryawanData();
-      } else {
-        _showMessage('Failed to update profile', isError: true);
-      }
-    } catch (e) {
-      _showMessage('Error updating profile: $e', isError: true);
-    }
+ Future<void> _updateProfile(Map<String, String> updatedData) async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  final String? token = prefs.getString('access_token');
+  if (token == null) {
+    _showMessage('Token is missing', isError: true);
+    setState(() {
+      isLoading = false;
+    });
+    return;
   }
 
-  void _showUpdateDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Update Profile'),
-          content: Form(
+  try {
+    final response = await ApiService.putRequest('profile', updatedData, token);
+
+    if (response.statusCode == 200) {
+      _showMessage('Profile updated successfully');
+      _fetchKaryawanData();
+    } else {
+      _showMessage('Failed to update profile', isError: true);
+    }
+  } catch (e) {
+    _showMessage('Error updating profile: $e', isError: true);
+  }
+}
+
+void _showUpdateDialog() {
+  final nameController = TextEditingController(text: karyawanData?['nama_karyawan']);
+  final emailController = TextEditingController(text: karyawanData?['email']);
+  final phoneController = TextEditingController(text: karyawanData?['no_handphone']);
+  final addressController = TextEditingController(text: karyawanData?['alamat']);
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'Update Profile',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        ),
+        content: SingleChildScrollView(
+          child: Form(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextFormField(
-                  initialValue: karyawanData?['nama_karyawan'],
-                  decoration: const InputDecoration(labelText: 'Name'),
+                const Text(
+                  'Please update your information below:',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
+                const SizedBox(height: 10),
                 TextFormField(
-                  initialValue: karyawanData?['email'],
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Name',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
+                const SizedBox(height: 10),
                 TextFormField(
-                  initialValue: karyawanData?['no_handphone'],
-                  decoration: const InputDecoration(labelText: 'Phone'),
+                  controller: emailController,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
+                const SizedBox(height: 10),
                 TextFormField(
-                  initialValue: karyawanData?['alamat'],
-                  decoration: const InputDecoration(labelText: 'Address'),
+                  controller: phoneController,
+                  decoration: InputDecoration(
+                    labelText: 'Phone',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: addressController,
+                  decoration: InputDecoration(
+                    labelText: 'Address',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.redAccent),
             ),
-            ElevatedButton(
-              onPressed: () {
-                final Map<String, String> updatedData = {
-                  'name': 'Updated Name',
-                  'email': 'Updated Email',
-                  'phone': 'Updated Phone',
-                  'address': 'Updated Address',
-                };
-                _updateProfile(updatedData);
-                Navigator.of(context).pop();
-              },
-              child: const Text('Save'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final Map<String, String> updatedData = {
+                'nama_karyawan': nameController.text,
+                'email': emailController.text,
+                'no_handphone': phoneController.text,
+                'alamat': addressController.text,
+              };
+              _updateProfile(updatedData);
+              Navigator.of(context).pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
             ),
-          ],
-        );
-      },
-    );
-  }
+            child: const Text('Save'),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   void _showMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(

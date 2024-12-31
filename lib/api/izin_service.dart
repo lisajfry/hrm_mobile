@@ -12,35 +12,31 @@ class IzinService {
     return prefs.getString('access_token');
   }
 
-  
+  Future<List<Izin>> getIzin({int? bulan, int? tahun}) async {
+  String? token = await getToken();
 
-    Future<List<Izin>> getIzin({int? bulan, int? tahun}) async {
-    String? token = await getToken();
-
-
-    if (token == null) {
-      throw Exception('Token tidak ditemukan. Pastikan Anda sudah login.');
-    }
-
-    // Build the query parameters for the API
-    String url = '$apiUrl/izin';
-    if (bulan != null && tahun != null) {
-      url = '$url?bulan=$bulan&tahun=$tahun'; // Adding query params for month and year
-    }
-
-
-    final response = await http.get(
-      Uri.parse('$apiUrl/izin'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200) {
-      List jsonResponse = json.decode(response.body);
-      return jsonResponse.map((data) => Izin.fromJson(data)).toList();
-    } else {
-      throw Exception('Failed to load izin');
-    }
+  if (token == null) {
+    throw Exception('Token tidak ditemukan. Pastikan Anda sudah login.');
   }
+
+  // Bangun URL dengan query parameter
+  String url = '$apiUrl/izin';
+  if (bulan != null && tahun != null) {
+    url = '$url?bulan=$bulan&tahun=$tahun';
+  }
+
+  final response = await http.get(
+    Uri.parse(url),
+    headers: {'Authorization': 'Bearer $token'},
+  );
+
+  if (response.statusCode == 200) {
+    List jsonResponse = json.decode(response.body);
+    return jsonResponse.map((data) => Izin.fromJson(data)).toList();
+  } else {
+    throw Exception('Gagal memuat izin: ${response.body}');
+  }
+}
 
   Future<void> addIzin(Izin izin) async {
   String? token = await getToken();

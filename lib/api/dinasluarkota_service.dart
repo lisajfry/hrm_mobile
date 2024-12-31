@@ -12,18 +12,24 @@ class DinasLuarKotaService {
     return prefs.getString('access_token');
   }
 
-  // Get Dinas Luar Kota
-  Future<List<DinasLuarKota>> getDinasLuarKota() async {
+   // Get Dinas Luar Kota with optional filters for month and year
+  Future<List<DinasLuarKota>> getDinasLuarKota({int? bulan, int? tahun}) async {
     String? token = await getToken();
 
     if (token == null) {
       throw Exception('Token tidak ditemukan. Pastikan Anda sudah login.');
     }
 
-    final response = await http.get(
-      Uri.parse('$apiUrl/dinas-luar-kota'),
-      headers: {'Authorization': 'Bearer $token'},
-    ); 
+    // Bangun URL dengan query parameter
+  String url = '$apiUrl/dinas-luar-kota';
+  if (bulan != null && tahun != null) {
+    url = '$url?bulan=$bulan&tahun=$tahun';
+  }
+
+  final response = await http.get(
+    Uri.parse(url),
+    headers: {'Authorization': 'Bearer $token'},
+  );
 
     print('Status Code: ${response.statusCode}');
     print('Respons Body: ${response.body}');

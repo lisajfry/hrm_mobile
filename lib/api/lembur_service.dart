@@ -58,6 +58,12 @@ class LemburService {
     if (response.statusCode != 201) {
       throw Exception('Gagal menyimpan data lembur: ${response.body}');
     }
+
+    print('Response code: ${response.statusCode}');
+print('Response body: ${response.body}');
+
+
+
   }
 
    }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hrm/model/dinasluarkota.dart';
 import 'package:hrm/api/dinasluarkota_service.dart';
-import 'package:intl/intl.dart';  // Untuk format angka
-import 'package:flutter/services.dart'; // Import TextInputFormatter
+import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 
 class DinasLuarKotaForm extends StatefulWidget {
   final DinasLuarKota? dinas;
@@ -25,26 +25,23 @@ class _DinasLuarKotaFormState extends State<DinasLuarKotaForm> {
   late double biayaPenginapan;
   late double uangHarian;
 
-  // Fungsi untuk memformat angka dengan pemisah ribuan
   String _formatRupiah(double amount) {
     final numberFormat = NumberFormat("#,##0", "id_ID");
     return numberFormat.format(amount);
   }
 
-  // Fungsi untuk mengkonversi input text ke angka dengan pemisah ribuan
   double _parseRupiah(String value) {
     return double.parse(value.replaceAll(RegExp(r'[^\d]'), ''));
   }
 
-  // TextInputFormatter untuk menambahkan pemisah ribuan
   TextInputFormatter _rupiahFormatter() {
     return TextInputFormatter.withFunction((oldValue, newValue) {
-      // Menghapus karakter selain angka
       String text = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
-      // Format angka dengan titik setiap 3 digit
       String formattedText = _formatRupiah(double.parse(text));
-      // Mengembalikan value dengan format yang benar
-      return newValue.copyWith(text: formattedText, selection: TextSelection.collapsed(offset: formattedText.length));
+      return newValue.copyWith(
+        text: formattedText,
+        selection: TextSelection.collapsed(offset: formattedText.length),
+      );
     });
   }
 
@@ -61,7 +58,7 @@ class _DinasLuarKotaFormState extends State<DinasLuarKotaForm> {
       biayaPenginapan = widget.dinas!.biayaPenginapan;
       uangHarian = widget.dinas!.uangHarian;
     } else {
-      idKaryawan = 0; // Atur ke idKaryawan login
+      idKaryawan = 0;
       tglBerangkat = DateTime.now();
       tglKembali = DateTime.now();
       kotaTujuan = '';
@@ -105,21 +102,73 @@ class _DinasLuarKotaFormState extends State<DinasLuarKotaForm> {
         biayaTransport: biayaTransport,
         biayaPenginapan: biayaPenginapan,
         uangHarian: uangHarian,
-        totalBiaya: (biayaTransport + biayaPenginapan + uangHarian),
+        totalBiaya: biayaTransport + biayaPenginapan + uangHarian,
         status: 'Menunggu',
       );
 
       try {
         if (widget.dinas == null) {
-          await DinasLuarKotaService().addDinasLuarKota(dinas);
-        } else {
-          await DinasLuarKotaService().updateDinasLuarKota(dinas);
-        }
+  await DinasLuarKotaService().addDinasLuarKota(dinas);
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Dinas berhasil ditambahkan.'),
+      backgroundColor: Colors.green,
+      behavior: SnackBarBehavior.floating,
+      duration: Duration(seconds: 3),
+    ),
+  );
+} else {
+  await DinasLuarKotaService().updateDinasLuarKota(dinas);
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Dinas berhasil diperbarui.'),
+      backgroundColor: Colors.green,
+      behavior: SnackBarBehavior.floating,
+      duration: Duration(seconds: 3),
+    ),
+  );
+}
+
         Navigator.pop(context);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menambah data dinas luar kota: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan data: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
     }
+  }
+
+  Widget _buildTextField({
+    required String labelText,
+    required String initialValue,
+    required Function(String?) onSaved,
+    String? Function(String?)? validator,
+    TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        initialValue: initialValue,
+        decoration: InputDecoration(
+          labelText: labelText,
+          labelStyle: TextStyle(color: Colors.blue),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.blue),
+          ),
+          border: OutlineInputBorder(),
+        ),
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        validator: validator,
+        onSaved: onSaved,
+      ),
+    );
   }
 
   @override
@@ -129,123 +178,86 @@ class _DinasLuarKotaFormState extends State<DinasLuarKotaForm> {
         title: Text(widget.dinas == null ? 'Tambah Dinas Luar Kota' : 'Edit Dinas Luar Kota'),
         backgroundColor: Colors.blue[800],
       ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              GestureDetector(
-                onTap: () => _selectDate(context, true),
-                child: AbsorbPointer(
-                  child: TextFormField(
-                    decoration: InputDecoration(labelText: 'Tanggal Berangkat'),
-                    controller: TextEditingController(
-                      text: "${tglBerangkat.year}-${tglBerangkat.month.toString().padLeft(2, '0')}-${tglBerangkat.day.toString().padLeft(2, '0')}",
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onTap: () => _selectDate(context, true),
+                  child: AbsorbPointer(
+                    child: _buildTextField(
+                      labelText: 'Tanggal Berangkat',
+                      initialValue: DateFormat('yyyy-MM-dd').format(tglBerangkat),
+                      onSaved: (_) {},
+                      validator: (value) => value!.isEmpty ? 'Tanggal berangkat wajib diisi' : null,
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Tanggal berangkat wajib diisi';
-                      }
-                      return null;
-                    },
                   ),
                 ),
-              ),
-              GestureDetector(
-                onTap: () => _selectDate(context, false),
-                child: AbsorbPointer(
-                  child: TextFormField(
-                    decoration: InputDecoration(labelText: 'Tanggal Kembali'),
-                    controller: TextEditingController(
-                      text: "${tglKembali.year}-${tglKembali.month.toString().padLeft(2, '0')}-${tglKembali.day.toString().padLeft(2, '0')}",
+                GestureDetector(
+                  onTap: () => _selectDate(context, false),
+                  child: AbsorbPointer(
+                    child: _buildTextField(
+                      labelText: 'Tanggal Kembali',
+                      initialValue: DateFormat('yyyy-MM-dd').format(tglKembali),
+                      onSaved: (_) {},
+                      validator: (value) => value!.isEmpty ? 'Tanggal kembali wajib diisi' : null,
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Tanggal kembali wajib diisi';
-                      }
-                      return null;
-                    },
                   ),
                 ),
-              ),
-              TextFormField(
-                initialValue: widget.dinas?.kotaTujuan ?? '',
-                decoration: InputDecoration(labelText: 'Kota Tujuan'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Kota tujuan wajib diisi';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  kotaTujuan = value!;
-                },
-              ),
-              TextFormField(
-                initialValue: widget.dinas?.keperluan ?? '',
-                decoration: InputDecoration(labelText: 'Keperluan'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Keperluan wajib diisi';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  keperluan = value!;
-                },
-              ),
-              TextFormField(
-                initialValue: widget.dinas?.biayaTransport != null ? _formatRupiah(widget.dinas!.biayaTransport) : '',
-                decoration: InputDecoration(labelText: 'Biaya Transport'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Biaya transport wajib diisi';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  biayaTransport = _parseRupiah(value!);
-                },
-                inputFormatters: [_rupiahFormatter()],
-              ),
-              TextFormField(
-                initialValue: widget.dinas?.biayaPenginapan != null ? _formatRupiah(widget.dinas!.biayaPenginapan) : '',
-                decoration: InputDecoration(labelText: 'Biaya Penginapan'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Biaya penginapan wajib diisi';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  biayaPenginapan = _parseRupiah(value!);
-                },
-                inputFormatters: [_rupiahFormatter()],
-              ),
-              TextFormField(
-                initialValue: widget.dinas?.uangHarian != null ? _formatRupiah(widget.dinas!.uangHarian) : '',
-                decoration: InputDecoration(labelText: 'Uang Harian'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Uang harian wajib diisi';
-                  }
-                  return null;
-                },
-                onSaved: (value) {
-                  uangHarian = _parseRupiah(value!);
-                },
-                inputFormatters: [_rupiahFormatter()],
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _submitForm,
-                child: Text(widget.dinas == null ? 'Tambah' : 'Update'),
-              ),
-            ],
+                _buildTextField(
+                  labelText: 'Kota Tujuan',
+                  initialValue: widget.dinas?.kotaTujuan ?? '',
+                  onSaved: (value) => kotaTujuan = value!,
+                  validator: (value) => value!.isEmpty ? 'Kota tujuan wajib diisi' : null,
+                ),
+                _buildTextField(
+                  labelText: 'Keperluan',
+                  initialValue: widget.dinas?.keperluan ?? '',
+                  onSaved: (value) => keperluan = value!,
+                  validator: (value) => value!.isEmpty ? 'Keperluan wajib diisi' : null,
+                ),
+                _buildTextField(
+                  labelText: 'Biaya Transport',
+                  initialValue: widget.dinas?.biayaTransport != null ? _formatRupiah(widget.dinas!.biayaTransport) : '',
+                  keyboardType: TextInputType.number,
+                  onSaved: (value) => biayaTransport = _parseRupiah(value!),
+                  validator: (value) => value!.isEmpty ? 'Biaya transport wajib diisi' : null,
+                  inputFormatters: [_rupiahFormatter()],
+                ),
+                _buildTextField(
+                  labelText: 'Biaya Penginapan',
+                  initialValue: widget.dinas?.biayaPenginapan != null ? _formatRupiah(widget.dinas!.biayaPenginapan) : '',
+                  keyboardType: TextInputType.number,
+                  onSaved: (value) => biayaPenginapan = _parseRupiah(value!),
+                  validator: (value) => value!.isEmpty ? 'Biaya penginapan wajib diisi' : null,
+                  inputFormatters: [_rupiahFormatter()],
+                ),
+                _buildTextField(
+                  labelText: 'Uang Harian',
+                  initialValue: widget.dinas?.uangHarian != null ? _formatRupiah(widget.dinas!.uangHarian) : '',
+                  keyboardType: TextInputType.number,
+                  onSaved: (value) => uangHarian = _parseRupiah(value!),
+                  validator: (value) => value!.isEmpty ? 'Uang harian wajib diisi' : null,
+                  inputFormatters: [_rupiahFormatter()],
+                ),
+                SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _submitForm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[800],
+                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                    ),
+                    child: Text(widget.dinas == null ? 'Tambah' : 'Update', style: TextStyle(fontSize: 16.0)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
