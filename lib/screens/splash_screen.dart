@@ -69,7 +69,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<bool> _verifyToken(String token) async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.0.101:8000/api/verify-token'), // Endpoint API untuk verifikasi token
+        Uri.parse('http://192.168.200.40:8000/api/verify-token'), // Endpoint API untuk verifikasi token
         headers: {
           'Authorization': 'Bearer $token', // Kirim token di header
         },

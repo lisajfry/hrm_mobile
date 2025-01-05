@@ -4,7 +4,7 @@ import '../model/lembur.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LemburService {
-  final String baseUrl = 'http://192.168.0.101:8000/api'; // Ganti dengan URL backend Anda
+  final String baseUrl = 'http://192.168.200.40:8000/api'; // Ganti dengan URL backend Anda
 
   // Fetch token from SharedPreferences
   Future<String?> getToken() async {

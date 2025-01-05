@@ -37,7 +37,13 @@ class _PayrollBarChartState extends State<PayrollBarChart> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Payroll Bar Chart"),
+title: const Text(
+  "Grafik Laporan Absensi Bulan Ini",
+  style: TextStyle(
+    fontSize: 16.0, // Atur ukuran font sesuai keinginan
+    fontWeight: FontWeight.bold, // Opsional untuk memberikan penekanan
+  ),
+),
       ),
       body: RefreshIndicator(
         onRefresh: () async {

@@ -4,37 +4,49 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 
 class PayrollService {
-  final String _baseUrl = 'http://192.168.0.101:8000/api'; // Ganti dengan URL API Anda
+  final String _baseUrl = 'http://192.168.200.40:8000/api'; // Ganti dengan URL API Anda
 
 
-  Future<Map<String, dynamic>> fetchPayrollSummary() async {
+/// Mengambil ringkasan payroll berdasarkan bulan dan tahun
+  /// [bulan] dan [tahun] bersifat opsional, default ke bulan dan tahun saat ini.
+  Future<Map<String, dynamic>?> fetchPayrollSummary({int? bulan, int? tahun}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('access_token'); // Asumsi token disimpan di SharedPreferences
+      final token = prefs.getString('access_token');
 
       if (token == null) {
         throw Exception('Token tidak ditemukan. Pastikan Anda sudah login.');
       }
 
+      // Default ke bulan dan tahun saat ini jika tidak diberikan
+      bulan ??= DateTime.now().month;
+      tahun ??= DateTime.now().year;
+
+      // Bangun URL dengan query parameter
+      final url = Uri.parse('$_baseUrl/payroll-summary?month=$bulan&year=$tahun');
+
       final response = await http.get(
-        Uri.parse('$_baseUrl/payroll-summary'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
+        url,
+        headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final data = json.decode(response.body);
+
+        if (data == null || data.isEmpty) {
+          return null; // Tidak ada data
+        }
+
+        return data; // Kembalikan data jika tersedia
       } else {
-        // Log respons dari server untuk debugging
-        print('Response Status: ${response.statusCode}');
-        print('Response Body: ${response.body}');
-        throw Exception('Gagal memuat ringkasan payroll: ${response.statusCode}');
+        throw Exception(
+          'Gagal memuat ringkasan payroll. Kode: ${response.statusCode}, Pesan: ${response.body}',
+        );
       }
     } catch (e) {
-      // Memberikan informasi kesalahan yang lebih spesifik
-      throw Exception('Terjadi kesalahan: $e');
+      // Log error untuk debugging
+      print('Terjadi kesalahan: $e');
+      throw Exception('Terjadi kesalahan saat memuat ringkasan payroll: $e');
     }
   }
 

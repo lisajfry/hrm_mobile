@@ -24,6 +24,9 @@ class _DinasLuarKotaFormState extends State<DinasLuarKotaForm> {
   late double biayaTransport;
   late double biayaPenginapan;
   late double uangHarian;
+  late TextEditingController _tglBerangkatController;
+late TextEditingController _tglKembaliController;
+
 
   String _formatRupiah(double amount) {
     final numberFormat = NumberFormat("#,##0", "id_ID");
@@ -45,48 +48,53 @@ class _DinasLuarKotaFormState extends State<DinasLuarKotaForm> {
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    if (widget.dinas != null) {
-      idKaryawan = widget.dinas!.idKaryawan;
-      tglBerangkat = widget.dinas!.tglBerangkat;
-      tglKembali = widget.dinas!.tglKembali;
-      kotaTujuan = widget.dinas!.kotaTujuan;
-      keperluan = widget.dinas!.keperluan;
-      biayaTransport = widget.dinas!.biayaTransport;
-      biayaPenginapan = widget.dinas!.biayaPenginapan;
-      uangHarian = widget.dinas!.uangHarian;
-    } else {
-      idKaryawan = 0;
-      tglBerangkat = DateTime.now();
-      tglKembali = DateTime.now();
-      kotaTujuan = '';
-      keperluan = '';
-      biayaTransport = 0.0;
-      biayaPenginapan = 0.0;
-      uangHarian = 0.0;
-    }
+ @override
+void initState() {
+  super.initState();
+  if (widget.dinas != null) {
+    idKaryawan = widget.dinas!.idKaryawan;
+    tglBerangkat = widget.dinas!.tglBerangkat;
+    tglKembali = widget.dinas!.tglKembali;
+    kotaTujuan = widget.dinas!.kotaTujuan;
+    keperluan = widget.dinas!.keperluan;
+    biayaTransport = widget.dinas!.biayaTransport;
+    biayaPenginapan = widget.dinas!.biayaPenginapan;
+    uangHarian = widget.dinas!.uangHarian;
+  } else {
+    idKaryawan = 0;
+    tglBerangkat = DateTime.now();
+    tglKembali = DateTime.now();
+    kotaTujuan = '';
+    keperluan = '';
+    biayaTransport = 0.0;
+    biayaPenginapan = 0.0;
+    uangHarian = 0.0;
   }
+
+  _tglBerangkatController = TextEditingController(text: DateFormat('yyyy-MM-dd').format(tglBerangkat));
+  _tglKembaliController = TextEditingController(text: DateFormat('yyyy-MM-dd').format(tglKembali));
+}
 
   Future<void> _selectDate(BuildContext context, bool isDeparture) async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: isDeparture ? tglBerangkat : tglKembali,
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2101),
-    );
+  final DateTime? pickedDate = await showDatePicker(
+    context: context,
+    initialDate: isDeparture ? tglBerangkat : tglKembali,
+    firstDate: DateTime.now(),
+    lastDate: DateTime(2101),
+  );
 
-    if (pickedDate != null) {
-      setState(() {
-        if (isDeparture) {
-          tglBerangkat = pickedDate;
-        } else {
-          tglKembali = pickedDate;
-        }
-      });
-    }
+  if (pickedDate != null) {
+    setState(() {
+      if (isDeparture) {
+        tglBerangkat = pickedDate;
+        _tglBerangkatController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+      } else {
+        tglKembali = pickedDate;
+        _tglKembaliController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+      }
+    });
   }
+}
 
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
@@ -186,29 +194,42 @@ class _DinasLuarKotaFormState extends State<DinasLuarKotaForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GestureDetector(
-                  onTap: () => _selectDate(context, true),
-                  child: AbsorbPointer(
-                    child: _buildTextField(
-                      labelText: 'Tanggal Berangkat',
-                      initialValue: DateFormat('yyyy-MM-dd').format(tglBerangkat),
-                      onSaved: (_) {},
-                      validator: (value) => value!.isEmpty ? 'Tanggal berangkat wajib diisi' : null,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => _selectDate(context, false),
-                  child: AbsorbPointer(
-                    child: _buildTextField(
-                      labelText: 'Tanggal Kembali',
-                      initialValue: DateFormat('yyyy-MM-dd').format(tglKembali),
-                      onSaved: (_) {},
-                      validator: (value) => value!.isEmpty ? 'Tanggal kembali wajib diisi' : null,
-                    ),
-                  ),
-                ),
-                _buildTextField(
+              GestureDetector(
+  onTap: () => _selectDate(context, true),
+  child: AbsorbPointer(
+    child: TextFormField(
+      controller: _tglBerangkatController,
+      decoration: InputDecoration(
+        labelText: 'Tanggal Berangkat',
+        labelStyle: TextStyle(color: Colors.blue),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.blue),
+        ),
+        border: OutlineInputBorder(),
+      ),
+      validator: (value) => value!.isEmpty ? 'Tanggal berangkat wajib diisi' : null,
+    ),
+  ),
+),
+SizedBox(height: 16), // Jarak 16 pixel antar elemen
+GestureDetector(
+  onTap: () => _selectDate(context, false),
+  child: AbsorbPointer(
+    child: TextFormField(
+      controller: _tglKembaliController,
+      decoration: InputDecoration(
+        labelText: 'Tanggal Kembali',
+        labelStyle: TextStyle(color: Colors.blue),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.blue),
+        ),
+        border: OutlineInputBorder(),
+      ),
+      validator: (value) => value!.isEmpty ? 'Tanggal kembali wajib diisi' : null,
+    ),
+  ),
+),
+              _buildTextField(
                   labelText: 'Kota Tujuan',
                   initialValue: widget.dinas?.kotaTujuan ?? '',
                   onSaved: (value) => kotaTujuan = value!,

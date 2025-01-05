@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 class DinasLuarKotaService {
-  final String apiUrl = 'http://192.168.0.101:8000/api';
+  final String apiUrl = 'http://192.168.200.40:8000/api';
 
   Future<String?> getToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();

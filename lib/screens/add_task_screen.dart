@@ -114,16 +114,21 @@ class _TaskFormState extends State<TaskForm> {
       appBar: AppBar(
         title: Text(widget.task == null ? 'Tambah Tugas' : 'Edit Tugas'),
       ),
-      body: SingleChildScrollView( // Wrap the body in a SingleChildScrollView
+      body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                SizedBox(height: 16),
                 TextFormField(
                   controller: _judulProyekController,
-                  decoration: InputDecoration(labelText: 'Judul Task'),
+                  decoration: InputDecoration(
+                    labelText: 'Judul Task',
+                    border: OutlineInputBorder(),
+                  ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Judul Task tidak boleh kosong';
@@ -131,9 +136,13 @@ class _TaskFormState extends State<TaskForm> {
                     return null;
                   },
                 ),
+                SizedBox(height: 16),
                 TextFormField(
                   controller: _kegiatanController,
-                  decoration: InputDecoration(labelText: 'Kegiatan'),
+                  decoration: InputDecoration(
+                    labelText: 'Kegiatan',
+                    border: OutlineInputBorder(),
+                  ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Kegiatan tidak boleh kosong';
@@ -141,10 +150,12 @@ class _TaskFormState extends State<TaskForm> {
                     return null;
                   },
                 ),
+                SizedBox(height: 16),
                 TextFormField(
                   controller: _tglMulaiController,
                   decoration: InputDecoration(
                     labelText: 'Tanggal Mulai',
+                    border: OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(Icons.calendar_today),
                       onPressed: () => _selectDate(context, _tglMulaiController),
@@ -152,10 +163,12 @@ class _TaskFormState extends State<TaskForm> {
                   ),
                   readOnly: true,
                 ),
+                SizedBox(height: 16),
                 TextFormField(
                   controller: _tglSelesaiController,
                   decoration: InputDecoration(
                     labelText: 'Tanggal Selesai',
+                    border: OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(Icons.calendar_today),
                       onPressed: () => _selectDate(context, _tglSelesaiController),
@@ -163,10 +176,12 @@ class _TaskFormState extends State<TaskForm> {
                   ),
                   readOnly: true,
                 ),
+                SizedBox(height: 16),
                 TextFormField(
                   controller: _batasPenyelesaianController,
                   decoration: InputDecoration(
                     labelText: 'Batas Penyelesaian',
+                    border: OutlineInputBorder(),
                     suffixIcon: IconButton(
                       icon: Icon(Icons.calendar_today),
                       onPressed: () => _selectDate(context, _batasPenyelesaianController),
@@ -174,8 +189,12 @@ class _TaskFormState extends State<TaskForm> {
                   ),
                   readOnly: true,
                 ),
+                SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  decoration: InputDecoration(labelText: 'Status'),
+                  decoration: InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
                   value: status,
                   items: ['belum dimulai', 'dalam progres', 'selesai'].map((String value) {
                     return DropdownMenuItem<String>(
@@ -195,10 +214,14 @@ class _TaskFormState extends State<TaskForm> {
                     return null;
                   },
                 ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : submitForm,
-                  child: _isLoading ? CircularProgressIndicator() : Text('Simpan'),
+                SizedBox(height: 24),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : submitForm,
+                    child: _isLoading
+                        ? CircularProgressIndicator(color: Colors.white)
+                        : Text('Simpan'),
+                  ),
                 ),
               ],
             ),

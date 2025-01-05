@@ -4,30 +4,40 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hrm/model/task.dart';
 
 class TaskService {
-  final String apiUrl = 'http://192.168.0.101:8000/api';
+  final String apiUrl = 'http://192.168.200.40:8000/api';
 
   Future<String?> getToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
   }
 
-  Future<List<Task>> getTasks() async {
+  // Get Dinas Luar Kota with optional filters for month and year
+  Future<List<Task>> getTask({int? bulan, int? tahun}) async {
     String? token = await getToken();
 
     if (token == null) {
       throw Exception('Token tidak ditemukan. Pastikan Anda sudah login.');
     }
 
-    final response = await http.get(
-      Uri.parse('$apiUrl/tasks'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
+    // Bangun URL dengan query parameter
+  String url = '$apiUrl/tasks';
+  if (bulan != null && tahun != null) {
+    url = '$url?bulan=$bulan&tahun=$tahun';
+  }
+
+  final response = await http.get(
+    Uri.parse(url),
+    headers: {'Authorization': 'Bearer $token'},
+  );
+
+    print('Status Code: ${response.statusCode}');
+    print('Respons Body: ${response.body}');
 
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
       return jsonResponse.map((data) => Task.fromJson(data)).toList();
     } else {
-      throw Exception('Failed to load tasks: ${response.body}');
+      throw Exception('Gagal memuat data dinas luar kota');
     }
   }
 

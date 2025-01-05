@@ -5,28 +5,35 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class AbsensiService {
-  final String baseUrl = 'http://192.168.0.101:8000/api/';
+  final String baseUrl = 'http://192.168.200.40:8000/api';
 
   Future<String?> getToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
   }
 
-  // Method untuk mendapatkan lokasi kantor
   Future<LatLng> getOfficeLocation() async {
-    final response = await http.get(
-      Uri.parse('${baseUrl}office-location'),
-    );
+  final double latitude = -7.636870688302552;
+  final double longitude = 111.54264772255189;
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      double latitude = data['latitude'];
-      double longitude = data['longitude'];
-      return LatLng(latitude, longitude);
-    } else {
-      throw Exception('Failed to load office location');
-    }
+  final url = "https://nominatim.openstreetmap.org/reverse?lat=$latitude&lon=$longitude&format=json";
+
+  final response = await http.get(
+    Uri.parse(url),
+    headers: {'User-Agent': 'hrm_mobile (liaaa.ty127@gmail.com)'},
+  );
+
+  if (response.statusCode == 200) {
+    final data = json.decode(response.body);
+    final address = data['display_name'] ?? 'Unknown location';
+
+    print("Address: $address");
+
+    return LatLng(latitude, longitude); // Tetap gunakan koordinat asli
+  } else {
+    throw Exception('Failed to fetch office location: ${response.statusCode}');
   }
+}
 
   Future<List<Absensi>> getAbsensi() async {
     String? token = await getToken();
@@ -37,7 +44,7 @@ class AbsensiService {
     }
 
     final response = await http.get(
-      Uri.parse('${baseUrl}absensi'),
+      Uri.parse('$baseUrl/absensi'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -50,6 +57,36 @@ class AbsensiService {
     }
   }
 
+
+  Future<List<Absensi>> getAbsensiFilter({int? bulan, int? tahun}) async {
+  String? token = await getToken();
+  print('Token yang digunakan: $token');
+
+  if (token == null) {
+    throw Exception('Token tidak ditemukan. Pastikan Anda sudah login.');
+  }
+
+  // Bangun URL dengan query parameter
+  String url = '$baseUrl/absensi';
+  if (bulan != null && tahun != null) {
+    url = '$url?bulan=$bulan&tahun=$tahun';
+  }
+
+  final response = await http.get(
+    Uri.parse(url), // Gunakan URL yang sudah dibangun
+    headers: {'Authorization': 'Bearer $token'},
+  );
+
+  if (response.statusCode == 200) {
+    List jsonResponse = json.decode(response.body);
+    print('Response: ${response.body}');
+    return jsonResponse.map((data) => Absensi.fromJson(data)).toList();
+  } else {
+    throw Exception('Failed to load tasks: ${response.body}');
+  }
+}
+
+
   // Absen Masuk
   Future<Absensi> absenMasuk(Map<String, dynamic> data) async {
     String? token = await getToken();
@@ -60,7 +97,7 @@ class AbsensiService {
 
     try {
       final response = await http.post(
-        Uri.parse('${baseUrl}absensi/masuk'), // gunakan endpoint yang benar
+        Uri.parse('$baseUrl/absensi/masuk'), // gunakan endpoint yang benar
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -96,7 +133,8 @@ class AbsensiService {
 
     try {
       final response = await http.post(
-        Uri.parse('${baseUrl}absensi/keluar'),
+                Uri.parse('$baseUrl/absensi/keluar'), // gunakan endpoint yang benar
+
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

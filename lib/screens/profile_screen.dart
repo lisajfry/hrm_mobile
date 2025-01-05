@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hrm/api/api_service.dart'; // Pastikan jalur ini benar
 import 'package:hrm/screens/signin_screen.dart';
+import 'package:hrm/api/avatar_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -21,6 +22,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final ImagePicker _picker = ImagePicker();
   File? _avatar;
   List<Map<String, dynamic>> jabatanList = [];
+  String? _avatarUrl; // Menyimpan URL avatar
+  AvatarService _avatarService = AvatarService(); // Instance AvatarService
 
   String getJabatanNama(int? jabatanId) {
     if (jabatanId == null || jabatanList.isEmpty) {
@@ -40,6 +43,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _loadSavedAvatar();
     _fetchKaryawanData();
+    _getAvatarFromService(); 
+  }
+
+
+
+ // Fungsi untuk mendapatkan avatar dari service
+  Future<void> _getAvatarFromService() async {
+    try {
+      final avatarUrl = await _avatarService.getAvatarKaryawan();
+      if (avatarUrl != null) {
+        setState(() {
+          _avatarUrl = avatarUrl;
+        });
+      }
+    } catch (e) {
+      // Tangani error jika tidak bisa mengambil avatar
+      print("Error fetching avatar: $e");
+      print("Avatar URL: $_avatarUrl");
+
+    }
   }
 
   Future<void> _loadSavedAvatar() async {
@@ -205,11 +228,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _refreshProfile() async {
-    setState(() {
-      isLoading = true;
-    });
-    await _fetchKaryawanData(); // Panggil ulang fungsi fetch data
-  }
+  setState(() {
+    isLoading = true;
+  });
+  await _fetchKaryawanData(); // Memuat ulang data karyawan
+  await _getAvatarFromService(); // Memuat ulang URL avatar
+  setState(() {
+    isLoading = false;
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +266,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                      Center(
+                     Center(
   child: Column(
     mainAxisSize: MainAxisSize.min,
     children: [
@@ -246,6 +274,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         clipBehavior: Clip.none, // Agar ikon kamera tidak terpotong
         alignment: Alignment.center,
         children: [
+          // Avatar Circle
           Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
@@ -260,21 +289,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: CircleAvatar(
               radius: 60,
               backgroundColor: Colors.grey.shade300,
-              backgroundImage: _avatar != null
-                  ? FileImage(_avatar!)
-                  : (karyawanData?['avatar'] != null && karyawanData!['avatar'].isNotEmpty
-                      ? NetworkImage('${ApiService.baseUrl}storage/${karyawanData!['avatar']}')
-                      : const AssetImage('assets/images/profile.png')) as ImageProvider,
+              backgroundImage: _avatarUrl != null
+                  ? NetworkImage(_avatarUrl!) // Menggunakan URL avatar dari API
+                  
+                  : (_avatar != null
+                      ? FileImage(_avatar!) // Jika avatar lokal tersedia
+                      : const AssetImage('assets/images/profile.png') 
+                          as ImageProvider), // Default fallback image
             ),
           ),
+          // Kamera Edit Icon
           Positioned(
-            bottom: -15, // Memberi lebih banyak ruang di bawah
+            bottom: -15,
             right: 0,
             child: GestureDetector(
               onTap: () async {
-                await _pickImage();
+                await _pickImage(); // Buka galeri
                 if (_avatar != null) {
-                  await _uploadAvatar();
+                  await _uploadAvatar(); // Upload avatar ke server
                 }
               },
               child: Container(
@@ -312,7 +344,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ],
   ),
 ),
-
 
                         _buildContactInfo(), 
                       ],
